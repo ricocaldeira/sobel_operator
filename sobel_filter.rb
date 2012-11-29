@@ -21,6 +21,20 @@ borda =    ChunkyPNG::Image.new(img.width, img.height, ChunkyPNG::Color::TRANSPA
 borda_dx = ChunkyPNG::Image.new(img.width, img.height, ChunkyPNG::Color::TRANSPARENT)
 borda_dy = ChunkyPNG::Image.new(img.width, img.height, ChunkyPNG::Color::TRANSPARENT)
 
+def reforcar_borda(val_x)
+  val_x = 255 if val_x > 255
+  val_x
+end
+
+def filtrar_imagem(borda_dx, pixel_x, x, y)
+  val_x = Math.sqrt((pixel_x * pixel_x)).ceil
+  borda_dx[x, y] = ChunkyPNG::Color.grayscale(reforcar_borda(val_x))
+end
+
+def imprime_pixels_da_imagem(imagem)
+  print imagem.pixels
+end
+
 for x in 1..img.width-2
   for y in 1..img.height-2
     pixel_x = (sobel_dx[0][0] * img.at(x-1,y-1)) + (sobel_dx[0][1] * img.at(x,y-1)) + (sobel_dx[0][2] * img.at(x+1,y-1)) +
@@ -32,15 +46,10 @@ for x in 1..img.width-2
               (sobel_dy[2][0] * img.at(x-1,y+1)) + (sobel_dy[2][1] * img.at(x,y+1)) + (sobel_dy[2][2] * img.at(x+1,y+1))
 
     # método :ceil retorna o inteiro maior ou igual ao NUMBER de entrada, usado para normalizar
+    filtrar_imagem(borda_dx, pixel_x, x, y)
+    filtrar_imagem(borda_dy, pixel_y, x, y)
     val = Math.sqrt((pixel_x * pixel_x) + (pixel_y * pixel_y)).ceil
-    val_x = Math.sqrt((pixel_x * pixel_x)).ceil
-    val_y = Math.sqrt((pixel_y * pixel_y)).ceil
-    #val = 255 if val > 255
-    borda[x,y] = ChunkyPNG::Color.grayscale(val)
-    borda_dx[x,y] = ChunkyPNG::Color.grayscale(val_x)
-    borda_dy[x,y] = ChunkyPNG::Color.grayscale(val_y)
-    #print "#{val}\t"
-    mat_x[x,y] = pixel_x
+    borda[x,y] = ChunkyPNG::Color.grayscale(reforcar_borda(val))
   end
 end
 
@@ -48,6 +57,6 @@ borda.save('final_edge.png')
 borda_dx.save('final-dx_edge.png')
 borda_dy.save('final-dy_edge.png')
 
-print borda.pixels
+imprime_pixels_da_imagem borda_dx
 
 
