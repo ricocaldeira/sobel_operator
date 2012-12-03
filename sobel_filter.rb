@@ -1,4 +1,3 @@
-
 require 'chunky_png'
 
 class ChunkyPNG::Image
@@ -7,56 +6,69 @@ class ChunkyPNG::Image
   end
 end
 
-img = ChunkyPNG::Image.from_file('engine.png')
+module SobelManipulator
+  SOBEL_DX = [[-1,0,1],
+                 [-2,0,2],
+                 [-1,0,1]]
 
-sobel_dx = [[-1,0,1],
-            [-2,0,2],
-            [-1,0,1]]
+  SOBEL_DY = [[-1,-2,-1],
+                 [0,0,0],
+                 [1,2,1]]
 
-sobel_dy = [[-1,-2,-1],
-            [0,0,0],
-            [1,2,1]]
+  def self.generate_edges(image)
+    borda = gerar_imagem_crua(image.width, image.height)
+    borda_dx = gerar_imagem_crua(image.width, image.height)
+    borda_dy = gerar_imagem_crua(image.width, image.height)
 
-borda =    ChunkyPNG::Image.new(img.width, img.height, ChunkyPNG::Color::TRANSPARENT)
-borda_dx = ChunkyPNG::Image.new(img.width, img.height, ChunkyPNG::Color::TRANSPARENT)
-borda_dy = ChunkyPNG::Image.new(img.width, img.height, ChunkyPNG::Color::TRANSPARENT)
+    for x in 1..image.width-2
+      for y in 1..image.height-2
+        pixel_x = filtrar(image, SOBEL_DX, x, y)
+        pixel_y = filtrar(image, SOBEL_DY, x, y)
 
-def reforcar_borda(val_x)
-  val_x = 255 if val_x > 255
-  val_x
-end
+        val = calcular_desvio(pixel_x: pixel_x, pixel_y: pixel_y)
+        borda[x,y] = ChunkyPNG::Color.grayscale(reforcar_borda(val))
 
-def filtrar_imagem(borda_dx, pixel_x, x, y)
-  val_x = Math.sqrt((pixel_x * pixel_x)).ceil
-  borda_dx[x, y] = ChunkyPNG::Color.grayscale(reforcar_borda(val_x))
-end
+        val_x = calcular_desvio(pixel_x: pixel_x)
+        borda_dx[x,y] = ChunkyPNG::Color.grayscale(reforcar_borda(val_x))
 
-def imprime_pixels_da_imagem(imagem)
-  print imagem.pixels
-end
+        val_y = calcular_desvio(pixel_y: pixel_y)
+        borda_dy[x,y] = ChunkyPNG::Color.grayscale(reforcar_borda(val_y))
 
-for x in 1..img.width-2
-  for y in 1..img.height-2
-    pixel_x = (sobel_dx[0][0] * img.at(x-1,y-1)) + (sobel_dx[0][1] * img.at(x,y-1)) + (sobel_dx[0][2] * img.at(x+1,y-1)) +
-              (sobel_dx[1][0] * img.at(x-1,y))   + (sobel_dx[1][1] * img.at(x,y))   + (sobel_dx[1][2] * img.at(x+1,y)) +
-              (sobel_dx[2][0] * img.at(x-1,y+1)) + (sobel_dx[2][1] * img.at(x,y+1)) + (sobel_dx[2][2] * img.at(x+1,y+1))
+      end
+    end
 
-    pixel_y = (sobel_dy[0][0] * img.at(x-1,y-1)) + (sobel_dy[0][1] * img.at(x,y-1)) + (sobel_dy[0][2] * img.at(x+1,y-1)) +
-              (sobel_dy[1][0] * img.at(x-1,y))   + (sobel_dy[1][1] * img.at(x,y))   + (sobel_dy[1][2] * img.at(x+1,y)) +
-              (sobel_dy[2][0] * img.at(x-1,y+1)) + (sobel_dy[2][1] * img.at(x,y+1)) + (sobel_dy[2][2] * img.at(x+1,y+1))
+    borda.save('final_edge.png')
+    borda_dx.save('final-dx_edge.png')
+    borda_dy.save('final-dy_edge.png')
+  end
 
-    # método :ceil retorna o inteiro maior ou igual ao NUMBER de entrada, usado para normalizar
-    filtrar_imagem(borda_dx, pixel_x, x, y)
-    filtrar_imagem(borda_dy, pixel_y, x, y)
-    val = Math.sqrt((pixel_x * pixel_x) + (pixel_y * pixel_y)).ceil
-    borda[x,y] = ChunkyPNG::Color.grayscale(reforcar_borda(val))
+  private
+
+  def self.gerar_imagem_crua(width, height)
+    ChunkyPNG::Image.new(width, height, ChunkyPNG::Color::TRANSPARENT)
+  end
+
+  def self.reforcar_borda(pixel)
+    pixel = 255 if pixel > 255
+    pixel
+  end
+
+  def self.calcular_desvio(params={})
+    if params[:pixel_x] and params[:pixel_y]
+      Math.sqrt((params[:pixel_x] * params[:pixel_x]) + (params[:pixel_y] * params[:pixel_y])).ceil
+    elsif params[:pixel_x]
+      Math.sqrt((params[:pixel_x] * params[:pixel_x])).ceil
+    else params[:pixel_y]
+      Math.sqrt((params[:pixel_y] * params[:pixel_y])).ceil
+    end
+  end
+
+  def self.filtrar(image, matriz_de_mascara, x, y)
+    pixel_x = (matriz_de_mascara[0][0] * image.at(x-1, y-1)) + (matriz_de_mascara[0][1] * image.at(x, y-1)) + (matriz_de_mascara[0][2] * image.at(x+1, y-1)) +
+        (matriz_de_mascara[1][0] * image.at(x-1, y)) + (matriz_de_mascara[1][1] * image.at(x, y)) + (matriz_de_mascara[1][2] * image.at(x+1, y)) +
+        (matriz_de_mascara[2][0] * image.at(x-1, y+1)) + (matriz_de_mascara[2][1] * image.at(x, y+1)) + (matriz_de_mascara[2][2] * image.at(x+1, y+1))
   end
 end
 
-borda.save('final_edge.png')
-borda_dx.save('final-dx_edge.png')
-borda_dy.save('final-dy_edge.png')
-
-imprime_pixels_da_imagem borda_dx
-
-
+img = ChunkyPNG::Image.from_file('images.png')
+SobelManipulator.generate_edges(img)
